@@ -1,0 +1,38 @@
+{
+  "head" : {
+    "vars" : [ "class", "tot" ]
+  },
+  "results" : {
+    "bindings" : [ {
+      "class" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q31855"
+      },
+      "tot" : {
+        "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+        "type" : "literal",
+        "value" : "6"
+      }
+    }, {
+      "class" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q5"
+      },
+      "tot" : {
+        "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+        "type" : "literal",
+        "value" : "25"
+      }
+    }, {
+      "class" : {
+        "type" : "uri",
+        "value" : "http://www.wikidata.org/entity/Q9388534"
+      },
+      "tot" : {
+        "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+        "type" : "literal",
+        "value" : "26"
+      }
+    } ]
+  }
+}
