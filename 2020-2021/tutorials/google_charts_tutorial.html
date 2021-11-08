@@ -1,0 +1,59 @@
+<html>
+  <head>
+    <!--Load the AJAX API that loads the google charts-->
+    <script src="jquery-1.10.1.min.js"></script>
+    <script src="jquery.csv-0.71.min.js"></script>
+    <script type="text/javascript" src="loader.js"></script>
+  </head>
+
+  <body>
+    <script type="text/javascript">
+      // load google charts: read explanations here https://developers.google.com/chart/interactive/docs/basic_load_libs
+      google.charts.load('current', {packages: ['corechart']});
+      google.charts.setOnLoadCallback(drawChart);
+      // method 1
+      // your function to gather data from a csv, transform data into a google data table, and draw the chart
+      // function drawChart() {
+      //   var queryOptions = {
+      //       csvColumns: ['string', 'number' /* the type of data in your csv columns */],
+      //       csvHasHeader: true /* if the CSV has a header */
+      //   }
+      //   /* recall the CSV file, which must be on the same server of the HTML file */
+      //   var query = new google.visualization.Query('periods_dates_sample.csv', queryOptions);
+      //   query.send(handleQueryResponse);
+      //
+      //   function handleQueryResponse(response) {
+      //       // set the behaviour in case of errors
+      //       if (response.isError()) {
+      //           alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+      //           return;
+      //       }
+      //       // get the response and transofrm it in a google data table
+      //       var data = response.getDataTable();
+      //       // set the chart type and select the HTML element where to plot it
+      //       var chart = new google.visualization.ColumnChart(document.getElementById('chart_div'));
+      //       // set chart options
+      //       var options = {'title':'Periods',
+      //                      'width':600,
+      //                      'height':300};
+      //       // draw the chart
+      //       chart.draw(data, options);
+      //   }
+      // }
+
+    // method 2
+    function drawChart() {
+        $.get("./periods_dates_sample.csv", function(csvString) {
+            var arrayData = $.csv.toArrays(csvString, {onParseValue: $.csv.hooks.castToScalar}),
+                data      = new google.visualization.arrayToDataTable(arrayData),
+                options   = {'title':'Periods','width':600,'height':300},
+                chart     = new google.visualization.ColumnChart(document.getElementById('chart_div'));
+            chart.draw(data, options);
+        },'text');
+    };
+
+    </script>
+    <!--Div that will hold the chart-->
+    <div id="chart_div"></div>
+  </body>
+</html>
