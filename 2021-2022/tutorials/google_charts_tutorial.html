@@ -9,14 +9,16 @@
   <body>
     <script type="text/javascript">
       // load google charts: read explanations here https://developers.google.com/chart/interactive/docs/basic_load_libs
+      // online data
+      var online_data = "https://raw.githubusercontent.com/marilenadaquino/epds/main/2020-2021/tutorials/periods_dates_sample.csv";
       google.charts.load('current', {packages: ['corechart']});
-      google.charts.setOnLoadCallback(drawChart);
-
-    // method 2
-
+      google.charts.setOnLoadCallback( drawChart("https://raw.githubusercontent.com/marilenadaquino/epds/main/2020-2021/tutorials/periods_dates_sample.csv", "chart_online_div") );
+      // to get local data use the following callback - WORKS ONLY on Safari or on a web server
+      // drawChart("./periods_dates_sample.csv","chart_div");
     function drawChart(file_path,div_id) {
         // gather data from the CSV
         $.get(file_path, function(csvString) {
+            console.log(csvString);
             // transform data into an array to arrays
             var arrayData = $.csv.toArrays(csvString, {onParseValue: $.csv.hooks.castToScalar}),
                 // trasform the array into a google table object
@@ -29,10 +31,8 @@
             chart.draw(data, options);
         },'text');
     };
-    // get local data
-    drawChart("./periods_dates_sample.csv","chart_div");
-    // get online data 
-    drawChart("https://raw.githubusercontent.com/marilenadaquino/epds/main/2020-2021/tutorials/periods_dates_sample.csv","chart_online_div");
+
+
     </script>
     <!--Div that will hold the chart-->
     <div id="chart_div"></div>
