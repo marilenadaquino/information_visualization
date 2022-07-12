@@ -11,7 +11,7 @@
       "tot" : {
         "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
         "type" : "literal",
-        "value" : "6"
+        "value" : "8"
       }
     }, {
       "class" : {
@@ -21,7 +21,7 @@
       "tot" : {
         "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
         "type" : "literal",
-        "value" : "25"
+        "value" : "27"
       }
     }, {
       "class" : {
@@ -31,7 +31,7 @@
       "tot" : {
         "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
         "type" : "literal",
-        "value" : "26"
+        "value" : "28"
       }
     } ]
   }
