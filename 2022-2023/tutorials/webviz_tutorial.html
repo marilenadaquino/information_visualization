@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Mondrian's production</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.7.0/d3.min.js">
+    </script>
+  </head>
+  <body class="container-fluid">
+    <header class="col-10">
+      <h1>Visualize charts with Javascript</h1>
+    </header>
+    <section class="col-10">
+      <p>In this tutorial we plot a bar chart representing Mondrian's artwork
+        production over time using
+        the Javascript library <a href="https://www.chartjs.org/docs/latest/getting-started/" target="_blank">Chart.js</a>.
+      While we will use some methods specific to this library, the overall approach to query data and configure a chart is similar across libraries.</p>
+      <p>To build interactive visualizations on the web you will need:</p>
+      <ul>
+        <li>one or more data sources to query (either stored in files or available via APIs<a href="#note1">*</a>)</li>
+        <li>a HTML document (and CSS files)</li>
+        <li>one or more Javascript libraries specific for data visualizations</li>
+      </ul>
+    </section>
+    <section class="col-10">
+      <h2>Data</h2>
+      <p>Data and web resources should always be separated.
+        Do not copy and paste data in your web page if possible.
+        Rather, store data in separate files and query them via appropriate methods in Javascript.</p>
+      <p>Each library requires input data in specific formats and structure.
+          According to Charts.js, to build a <a target="_blank" href="https://www.chartjs.org/docs/latest/charts/bar.html">bar chart</a>,
+          we need a data structure that makes easy to extract two lists of values (x and y).</p>
+      <p>To populate the chart we use a CSV file available on the
+        <a target="_blank" href="https://raw.githubusercontent.com/marilenadaquino/information_visualization/main/2022-2023/tutorials/mondrian.csv">GitHub repository of the course</a>
+        which looks like follows:</p>
+      <table style="font-family: monospace;">
+        <tr style="width: 300px;">
+          <td style="width: 100px;">year</td>
+          <td>count</td>
+        </tr>
+        <tr>
+          <td>1890</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>1891</td>
+          <td>6</td>
+        </tr>
+        <tr>
+          <td>...</td>
+          <td>...</td>
+        </tr>
+      </table>
+      <p>N.B. when testing Javascript libraries locally (i.e. not on a remote server),
+        the CSV file to be queried <b>must be</b> available online.
+        This problem is due to well-known policy restrictions of browsers,
+        called <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a>.</p>
+
+      <p><b>Tip!</b> Once you publish both your web page and your data on a server (either remote, like GitHub pages, or local, e.g. LAMP) the problem disappears.</p>
+    </section>
+    <section class="col-10">
+      <h2>HTML</h2>
+      <p>Create a HTML document with the mandatory structure:</p>
+      <pre><code>
+        &lt;!DOCTYPE html&gt;
+        &lt;html lang="en" dir="ltr"&gt;
+          &lt;head&gt;
+          &lt;/head&gt;
+          &lt;body&gt;
+
+          &lt;/body&gt;
+        &lt;/html&gt;
+      </code></pre>
+    <p>In the element <code>header</code> add links to <b>d3.js</b> and <b>Chart.js</b>
+      libraries (you can use CDN links or download the libraries
+      and reference the full path to the folder).<a href="note2">**</a> </p>
+    <pre><code>
+      &lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;
+      &lt;script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.7.0/d3.min.js"&gt;
+    </code></pre>
+    <p>We follow the instructions on the documentation of Chart.js and we create a HTML element with a unique id, wherein to include the final chart.</p>
+    <pre><code>
+      &lt;div&gt;
+        &lt;canvas id="myChart"&gt;&lt;/canvas&gt;
+      &lt;/div&gt;
+  </code></pre>
+  <h2>Configure and plot a chart</h2>
+  <p>We import the data using a method of d3.js called <code>.csv</code>, which performs a request to the specified URL and returns a data object.
+    Secondly, we bind the returned data to a function called <code>makeChart</code> that we will now create.</p>
+  <pre><code>
+    &lt;script&gt;
+      d3.csv("https://raw.githubusercontent.com/marilenadaquino/information_visualization/main/2022-2023/tutorials/mondrian.csv")
+        .then(makeChart);
+    &lt;/script&gt;
+  </code></pre>
+  <p>In the same script tag, or in a separated <code>.js</code> file imported in the HTML document, we include our function</p>
+  <pre><code>
+    // Plot the data with Chart.js
+    function makeChart(data) {
+      var yearLabels = data.map(function (d) { return d.year; });
+      var countData = data.map(function (d) { return d.count; });
+
+      var chart = new Chart("myChart", {
+        type: "bar",
+        data: {
+          labels: yearLabels,
+          datasets: [
+            {
+              label: "Mondrian's artworks",
+              data: countData,
+              backgroundColor: 'rgb(255, 99, 132)',
+            }
+          ]
+        }
+      });
+    }
+  </code></pre>
+  <p>In detail:</p>
+  <ul>
+    <li>We define the function <code>makeChart(data)</code>
+      with a parameter called <code>data</code>,
+      which corresponds to the result of the call made via the method <code>d3.csv()</code>
+    </li>
+    <li>We use the JS function <code>map</code>
+      to bind a new variable called <code>yearLabels</code> to the list of values
+      of the CSV column <code>year</code>. Likewise, we bind the variable <code>countData</code> to
+      values of the CSV column <code>count</code>.
+    </li>
+    <li>We define a variable for our chart, called <code>chart</code>,
+      which is an object created with the class <code>Chart</code>,
+      provided by Chart.js. The class <code>Chart</code> allows
+      several configuration parameters. We include the followings:</li>
+    <ul>
+      <li>the selector of the HTML element where to plot the chart <code>myChart</code></li>
+      <li>an object <code>{}</code> with the settings, which includes:</li>
+      <ul>
+        <li>the <code>type</code> of chart. The value <code>bar</code> is taken from a controlled list of values, and it represents a barchart</li>
+        <li>the <code>data</code> specifications. This includes:</li>
+          <ul>
+            <li><code>labels</code> to be used on the x axis
+              (which in our case correspond to the years taken from our csv file,
+              but in some case we may want to rename them)</li>
+              <li>the <code>datasets</code>, that is, the data series that appear in the chart,
+                organised in an Array of Objects.
+                In our case (a simple bar chart), hence we have only one series, hence one object, for which we  can specify:</li>
+                <ul>
+                  <li>the description of what bars represent, i.e. <code>label</code></li>
+                  <li>the <code>data</code> source, i.e. the column of our CSV including the values to be plot on the y axis</li>
+                  <li>the <code>backgroundColor</code> of the bars</li>
+                </ul>
+          </ul>
+      </ul>
+    </ul>
+  </ul>
+    </section>
+
+
+
+    <section>
+      <h2>Et voilà!</h2>
+      <canvas id="myChart"></canvas>
+    </section>
+    <hr>
+    <section>
+      <p class="small" id="note1">* In the next tutorial we will see how to live query SPARQL datasets via Javascript!</p>
+      <p class="small" id="note2">** d3.js is a more sophisticated library for data visualization. Here we import d3 to
+        reuse only one auxiliary method, that is, the one for querying online CSV data. Other alternatives exist.</p>
+    </section>
+    <script>
+      d3.csv("https://raw.githubusercontent.com/marilenadaquino/information_visualization/main/2022-2023/tutorials/mondrian.csv").then(makeChart);
+
+      // Plot the data with Chart.js
+      function makeChart(data) {
+        var yearLabels = data.map(function (d) {
+          return d.year;
+        });
+        var countData = data.map(function (d) {
+          return d.count;
+        });
+
+        var chart = new Chart("myChart", {
+          type: "bar",
+          data: {
+            labels: yearLabels,
+            datasets: [
+              {
+                label: "Mondrian's artworks",
+                data: countData,
+                backgroundColor: 'rgb(255, 99, 132)',
+              }
+            ]
+          }
+        });
+      }
+    </script>
+  </body>
+
+</html>
