@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query live SPARQL Enpoints with JavaScript</title>
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+</head>
+
+<body class="container-fluid">
+    <header class="col-10">
+        <h1>Query live SPARQL Enpoints with JavaScript</h1>
+    </header>
+    <section class="col-10">
+        <p>In this tutorial we plot a bar chart representing the 10 most widespread eye colors among humans in Wikidata
+            using the JavaScript library <a href="https://www.chartjs.org/docs/latest/getting-started/"
+                target="_blank">Chart.js</a>.
+            The overall approach of the chart construction is similar to the one already covered in the last tutorial
+            (webviz_tutorial.html). What changes in this case is the source of data, and how to get it.</p>
+        <p>To build live interactive visualizations on the web you will need:</p>
+        <ul>
+            <li>one or more data sources to query, in this case available via SPARQL Endpoints</li>
+            <li>a HTML document (and CSS files)</li>
+            <li>one or more Javascript libraries specific for data visualizations</li>
+        </ul>
+        <p>However, before actually venturing into the construction of our chart, it is necessary to start with an
+            introduction on how JavaScript works. In particular, we will see:</p>
+        <ul>
+            <li>the JavaScript Engine</li>
+            <li>the difference between synchronous and asynchronous programming</li>
+            <li>AJAX</li>
+        </ul>
+    </section>
+    <section class="col-10">
+        <h2>How JavaScript Works</h2>
+        <blockquote class='blockquote text-muted'>"Javascript is a <strong>single threaded</strong> language that can
+            be <strong>non-blocking</strong>."
+        </blockquote>
+        <p>First of all, what is a program? It is a set of instructions that has to:</p>
+        <ul>
+            <li><strong>allocate memory</strong>: stores variables, files etc.</li>
+            <li><strong>parse and execute scripts</strong>: meaning to read and run commands</li>
+        </ul>
+        <p>What happens with programming languages for front-end such as JavaScript is that Browsers implement engines
+            that are able to read code and execute it. In the case of Chrome for example, we have the <a
+                href='https://v8.dev/' target='_blank'>V8 Engine</a>.</p>
+        <h3>The JavaScript Engine</h3>
+        In general, the JavaScript Engine consists of two parts (depicted in <a href="#fig1">Fig. 1</a>):
+        <ol>
+            <li><strong>memory heap</strong>: where memory allocation happens eg. <code>const a = 1;</code></li>
+            <li><strong>call stack</strong>: where the code is read and executed</li>
+            <figure id='fig1'>
+                <img src='https://miro.medium.com/max/1400/1*OnH_DlbNAPvB9KLxUCyMsA.webp'
+                    alt='JavaScript Engine representation' style='max-width: 500px;' />
+                <figcaption>Fig. 1: The JavaScript Engine representation (<a
+                        href='https://blog.sessionstack.com/how-does-javascript-actually-work-part-1-b0bacc073cf'
+                        target='_blank'>source</a>).</figcaption>
+            </figure>
+        </ol>
+        <p>To better understand how the call stack works, we can run these three lines of code in the browser console:
+        </p>
+        <pre>
+    console.log('1');
+    console.log('2');
+    console.log('3');
+        </pre>
+        <p>The JS Engine reads the first line and put it in the call stack, runs it, and remove it. The
+            same happens for the second console and so on.</p>
+        <p>If we complicate a little bit the code, for example a function that calls another function such as the
+            example below, the order of execution in the call stack becomes less linear.</p>
+        <pre>
+    const one = () => {
+        const two = () => {
+            console.log('4');
+        }
+        two();
+    }
+        </pre>
+        <p>
+            We call the function <code>one()</code>, that goes at the top of the call stack. The first command is to run
+            another function, <code>two()</code>, that enters the call stack on top of <code>one()</code>. Running
+            <code>two()</code> means to execute the <code>console.log()</code> inside it. This
+            <code>console.log()</code> also enters the call stack, on top of <code>two()</code>. Since there is nothing
+            else, the call stack begins to run commands starting from the <strong>last that entered</strong>, meaning
+            that <code>console.log('4')</code> is executed, the number 4 printed and the command removed from the stack.
+            Since <code>two()</code> and <code>one()</code> have no other commands to execute, they are both removed
+            from the stack, one after the other, leaving the stack empty.
+        </p>
+        <p>
+            If we resume the first definition that we gave of JavaScript, we can understand that <i>single threaded</i>
+            means that there is only one stack that can execute <strong>one command at a time</strong>. Moreover, this
+            execution takes place in a specific order: <strong>first in last out</strong>.
+        </p>
+        <h3>Synchronous and Asynchronous</h3>
+        <p>The behavior we just witnessed is called <i>synchronous</i>, and happens when the operations are executed
+            sequentially, one after the other. This implies that complex tasks may take a lot of time to be completed,
+            <strong>blocking</strong> everything else for the time of its execution.
+        </p>
+        <p>Luckily, we have <strong>non-blocking</strong> strategies: <i>asynchronous</i> programming. Asynchronous
+            processing implies that operations can run in parallel if they are not dependent on others. It means that
+            certain tasks can be offloaded and executed as the same time as other operations, and return results only
+            when they are ready.</p>
+        <p>One way to approach asynchronous programming is to set timers. Consider and try this example:</p>
+        <pre>
+    console.log('1');
+    setTimeout(() => {
+        console.log('2');
+    }, 2000)
+    console.log('3');      
+        </pre>
+        <p>The order of output of the results is quite unexpected compared to what we have seen so far: we have
+            <code>console.log('1')</code>, then <code>console.log('3')</code> and finally <code>console.log('2')</code>
+            two seconds later. It looks like we just skipped this whole step and put this at the very end. How is
+            that possible?
+        </p>
+        <h4>The JavaScript Runtime Environment</h4>
+        <p>This more complex situation is what we call the JavaScript Runtime Environment, part of the browser, that
+            includes (<a href="#fig2">Fig. 2</a>):</p>
+        <ul>
+            <li>the <strong>memory heap</strong></li>
+            <li>the <strong>call stack</strong></li>
+            <li>a set of <strong>Web APIs</strong> such as DOM, AJAX, Timeout</li>
+            <li>the <strong>Callback Queue</strong></li>
+            <li>the <strong>Event Loop</strong></li>
+        </ul>
+        <figure id='fig2'>
+            <img src='https://miro.medium.com/max/1400/1*4lHHyfEhVB0LnQ3HlhSs8g.webp'
+                alt='JavaScript Runtime Environment representation' style='max-width: 500px;' />
+            <figcaption>Fig. 2: The JavaScript Runtime Environment representation (<a
+                    href='https://blog.sessionstack.com/how-does-javascript-actually-work-part-1-b0bacc073cf'
+                    target='_blank'>source</a>).</figcaption>
+        </figure>
+        <p>If we considere the piece of code above, what is happening is that:</p>
+        <ol>
+            <li><code>console.log('1')</code> enters the stack and is executed immediately</li>
+            <li>because <code>setTimeout()</code> is not part of JavaScript, but part of the Web APIs, after entering
+                the stack it is recognized as a Web API and gets popped out of it.</li>
+            <li>this <strong>Web API</strong> starts a timer of 2 seconds</li>
+            <li>because the call stack is empty, the JavaScript engine now goes to <code>console.log('3')</code> and
+                executes it</li>
+            <li>after the 2 seconds, the callback of <code>setTimeout()</code> needs to be run</li>
+            <li>this means that <code>console.log('2')</code> is addedd to the <strong>callback queue</strong></li>
+            <li>in the meantime, in the background the <strong>event loop</strong> is constantly checking if the call
+                stack is empty or not. If the call stack is empty, it then checks for any callbacks. In our case, it
+                finds <code>console.log('2')</code> and moves it in the call stack.</li>
+            <li>
+                <code>console.log('2')</code> is executed and removed from the call stack
+            </li>
+        </ol>
+        <p><strong>TO RECAP:</strong> <i>JavaScript is a single threaded language that can be nonblocking</i> means that
+            it has one call stack and it does one thing at a time. In order to not block the single thread,
+            it can be asynchronous with callback functions. These callback functions get run in the background, through
+            the callback queue and then the event loop, to bring it back to the call stack when they should.</p>
+    </section>
+    <section class='col-10'>
+        <h2>AJAX (Asynchronous JavaScript and XML)</h2>
+        <p>How is all this related to our goal, to create a chart by requesting live data from a SPARQL endpoint? The
+            main action we need to address is precisely that of <u>requesting data</u>, an operation that <u>can take a
+                variable amount of time</u> depending on the size of that data. Imagine it within the larger
+            context of the website you will have to build to display your search results: there is a risk
+            that while you are waiting for the data, which must then be processed and displayed, some part of the site
+            will not load because it is <strong>blocked</strong> by this costly operation. And that's where asynchronous
+            programming comes in: the data request must be handled with web technologies designed for that purpose,
+            specifically <strong>Asynchronous JavaScript and XML (AJAX)</strong>.</p>
+        <h3>The Client-Server Communication</h3>
+        <p>Clients and servers can communicate by exchanging individual messages. <strong>HTTP</strong> (Hypertext
+            Transfer Protocol) is the language that allows this communication through 5 main methods: GET, POST, PUT,
+            DELETE. The messages sent by the client (usually a web browser) are called <strong>requests</strong> and the
+            messages sent by the server are usually called <strong>responses</strong>. An overview of this communication
+            is offered at <a href='#fig3'>Fig. 3</a>.<br />
+            Over the years, HTTP was extended to not only fetch hypertext documents like HTML,
+            but also images and videos, and post content to servers like with HTML form results.</p>
+        <figure id='fig3'>
+            <img src='ajax.png' alt='client-server communication' style='max-width: 700px;' />
+            <figcaption>Fig. 3: An overview of Client-Server communication.</figcaption>
+        </figure>
+        <h4>The Format</h4>
+        <p>In the exchange between server and browser, the data can only be in <strong>TEXT form</strong>.
+            In this case JSON (JavaScript Object Notation), which is is a syntax for storing and
+            axchanging data, is the standard format to work with. The reason is that it's basically text written with
+            JavaScript object notation. Why not XML?</p>
+        <ul>
+            <li>JSON is already similar to a JavaScript object, easier to work with</li>
+            <li>JSON format is a more succinct way which saves bandwidth and improves response times when sending
+                messages back and forth between client and server</li>
+        </ul>
+        <p>Just remeber:</p>
+        <ul>
+            <li><code>JSON.parse()</code> from json string to js object</li>
+            <li><code>JSON.stringify()</code> from js object to json string</li>
+        </ul>
+        <h3>The Magic of AJAX</h3>
+        <p>Normally, when the browser receives a response from the server, it is necessary to reload the page in order,
+            for example, to show the new content. This becomes extremely wasteful.
+            What if I only want to update a very small part of the site? This issue led to the creation of technologies
+            that allow web pages to request small chunks of data such as HTML, XML, plain text, JSON and display them
+            only when needed.</p>
+        <p>The web technologies that compose AJAX do exactly this: <strong>allow you to read from a web server after the
+                page
+                has loaded and update a web page without reloading it.</strong>
+            And finally send data in the background while the user is interacting with the website.
+            AJAX is just a method of combining pieces together to achieve this result.</p>
+        <h4>The Evolution</h4>
+        <p><strong>XML HTTP Request (the old way)</strong></p>
+        <pre>
+    var request = new XMLHttpRequest();
+    request.open('GET', '/my/url', true);
+
+    request.onload() = function() {
+        if (request.status >= 200 && request.status < 400) {
+            // Succes!
+            var data = JSON.parse(request.responseText);
+        } else {
+            // We reached our target server, but i returned an error
+        }
+    };
+
+    request.onerror = function() {
+        // something
+    }
+
+    request.send();
+            </pre>
+        <p><strong>jQuery (the new old way)</strong></p>
+        <pre>
+    $getJSON('/my/url', function(data) {
+        // somthing
+    });
+        </pre>
+        <p><strong>Fetch (the new way)</strong></p>
+        <pre>
+    fetch('https://jsonplaceholder.typicode.com/posts')
+    .then((response) => response.json())
+    .then((data) => console.log(data));
+        </pre>
+        <p>
+            Here we are fetching (through the <a
+                href='https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch' target='_blank'>Fetch
+                API</a>) a JSON file across the network and printing it to the console. The simplest use of
+            <code>fetch()</code> takes one argument — <strong>the path</strong> to the resource you want to fetch — and
+            returns a <strong>Promise</strong> that resolves with a Response object that can be transformed into JSON
+            format.<br />
+            The Promise object represents the eventual completion (or failure) of an asynchronous operation and its
+            resulting value (<a
+                href='https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise'
+                target='_blank'>discover more</a>).
+        </p>
+        <p>An equivalent way to code it is to use Async/Await functions:</p>
+        <pre>
+    async function getData(url) {
+        const response = await fetch(url);
+        const data = await response.json();
+        console.log(data);
+    }
+        </pre>
+        <p>
+            What I do here is basically declare that I'm writing an asynchronous function. I wait for the fetch to
+            retrieve data, then store it into a variable. Once this action is completed, I change the response format to
+            JSON and finally log it into the console.
+        </p>
+        <p>To decide which approach to use is entirely up to you. To discover more on the evolution of Asynchronous
+            JavaScript you can read <a href='https://blog.risingstack.com/asynchronous-javascript/' target='_blank'>this
+                article</a>.</p>
+    </section>
+    <section class="col-10">
+        <h2>Now We Plot</h2>
+        Main actions:
+        <ul>
+            <li>create the HTML page</li>
+            <li>include Chartjs library</li>
+            <li>configure chart requirements</li>
+            <li>setup enpoint and query</li>
+            <li>fetch data and process it</li>
+        </ul>
+        <h3>HTML</h3>
+        <p>Create a HTML document with the mandatory structure:</p>
+        <pre><code>
+        &lt;!DOCTYPE html&gt;
+        &lt;html lang="en" dir="ltr"&gt;
+          &lt;head&gt;
+          &lt;/head&gt;
+          &lt;body&gt;
+
+          &lt;/body&gt;
+        &lt;/html&gt;
+      </code></pre>
+        <p>At the bottom of the <code>body</code> element add the link <b>Chart.js</b>
+            library (you can use the CDN link or download the library
+            and reference the full path to the folder).</p>
+        <pre><code>
+    &lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;
+        </code></pre>
+        <p>We follow the instructions on the documentation of Chart.js and we create a HTML element with a unique id,
+            wherein to include the final chart.</p>
+        <pre><code>
+      &lt;div&gt;
+        &lt;canvas id="myChart"&gt;&lt;/canvas&gt;
+      &lt;/div&gt;
+    </code></pre>
+        <h3>Configure the Chart</h3>
+        <p>Even before retrieving the data, we can define the function that will receive it and create the chart. This
+            can prove to be an important step, because depending on the library we are using, the data may have to take
+            a different form. If we check the <a href='https://www.chartjs.org/docs/latest/charts/bar.html'
+                target='_blank'>documentation for creating a barchart</a>, we see that:
+        <ol>
+            <li>we need two variables, one for the <strong>label</strong> and one for the corresponding number of
+                repetitions (<strong>count</strong>)
+            </li>
+            <li>both the labels and the counts can be elements of <strong>two arrays</strong>,
+                either as strings or integers.</li>
+        </ol>
+        </p>
+        <p>You can either add a new script tag, or in a separated <code>.js</code> file imported in the HTML document,
+            we include our
+            function:</p>
+        <pre><code>
+    const createBarChart = (canvaId, label, labelArray, dataArray) => {
+        const ctx = document.getElementById(canvaId);
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labelArray,
+                datasets: [{
+                    label: label,
+                    data: dataArray,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+        </code></pre>
+        <p>In detail:</p>
+        <ul>
+            <li>We define the function <code>createBarChart(canvaId, label, labelArray, dataArray)</code>
+                with parameter:
+                <ul>
+                    <li><code>canvaId</code>: the id to retrieve the canva inside of which the chart will appear</li>
+                    <li><code>label</code>: the string that will appear in the legend to describe data</li>
+                    <li><code>labelArray</code>: the array that will contain the labels for the x axis</li>
+                    <li><code>dataArray</code>: the array that will contain the count for the y axis</li>
+                </ul>
+            </li>
+            <li>We retrieve the canva <code>ctx</code> that will contain the chart through its id.
+            </li>
+            <li>We create a new instance of the Class <code>Chart</code> to instantiate the barchart. It allows several
+                configuration parameters. We include the followings::</li>
+            <ul>
+                <li>the selector of the HTML element where to plot the chart <code>ctx</code></li>
+                <li>an object <code>{}</code> with the settings, which includes:</li>
+                <ul>
+                    <li>the <code>type</code> of chart. The value <code>bar</code> is taken from a controlled list of
+                        values, and it represents a barchart</li>
+                    <li>the <code>data</code> specifications. This includes:</li>
+                    <ul>
+                        <li><code>labelArray</code> to be used on the x axis (that we will retrieve in a moment)</li>
+                        <li>the <code>datasets</code>, that is, the data series that appear in the chart,
+                            organised in an Array of Objects.
+                            In our case (a simple bar chart), hence we have only one series, hence one object, for which
+                            we can specify:</li>
+                        <ul>
+                            <li>the description of what bars represent, i.e. <code>label</code></li>
+                            <li>the <code>dataArray</code> source (that we will retrieve in a moment)</li>
+                            <li>the <code>borderWidth</code> of the bars</li>
+                        </ul>
+                    </ul>
+                </ul>
+            </ul>
+        </ul>
+        <h3>Data</h3>
+        <p>
+            First, you must have the <strong>SPARQL query</strong> needed to retrieve the data:
+        </p>
+        <pre>
+    SELECT ?eyeColorLabel (COUNT(?human) AS ?count) 
+    WHERE {  
+        ?human wdt:P31 wd:Q5.
+        ?human wdt:P1340 ?eyeColor.
+        SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+    }
+    GROUP BY ?eyeColorLabel
+    ORDER BY DESC(?count)
+    LIMIT 10
+        </pre>
+        <p>I want to search on Wikidata for human eye colors: I count the repetitions thanks to the COUNT and GROUP BY
+            operators, show results in descending ORDER and take the first 10 (LIMIT).</p>
+        <p>I store all the necessary information inside variables:</p>
+        <pre>
+            <code>
+    const myEndpoint = 'https://query.wikidata.org/sparql';
+    const myQuery = 'SELECT ?eyeColorLabel (COUNT(?human) AS ?count) WHERE {  ?human wdt:P31 wd:Q5.  ?human wdt:P1340 ?eyeColor.  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }} GROUP BY ?eyeColorLabel ORDER BY DESC(?count) LIMIT 10';
+    const encodedQuery = encodeURIComponent(myQuery);
+    const myUrl = myEndpoint + '?query=' + encodedQuery;
+            </code>
+        </pre>
+        <p>Notice that:</p>
+        <ul>
+            <li>I need to <strong>encode</strong> the query string with the <code>encodeURIComponent()</code> function
+                to escape special characters (<a
+                    href='https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent?retiredLocale=it'
+                    target='_blank'>more here)</a>.</li>
+            <li>Since I need to fetch data through a URL, I need to compose the request in this form:<br />
+                <code>endpoint + '=query' + encodedQuery</code> (example:
+                'https://query.wikidata.org/sparql?query=SELECT%20%...').
+            </li>
+        </ul>
+        <p>
+            Now we can finally retrieve the data we want to show. Keeping in mind everything we have seen so far, we
+            define an asynchronous function, which will show the data on the canva only once it is ready.
+        </p>
+        <pre>
+            <code>
+    const fillChart = async function (url, canvaId, label) {
+        labelArray = [];
+        dataArray = [];
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Accept': 'application/sparql-results+json' }
+            });
+            const data = await response.json();
+            const results = data.results.bindings; // array of objs
+            for (entry of results) {
+                labelArray.push(entry.eyeColorLabel.value);
+                dataArray.push(entry.count.value);
+            }
+            // create chart
+            createBarChart(canvaId, label, labelArray, dataArray)
+            }
+        catch (err) {
+            console.log('Sorry, ', err);
+        }
+    }
+            </code>
+        </pre>
+        <p>In detail:</p>
+        <ul>
+            <li>We define the function <code>fillChart(url, canvaId, label)</code>
+                with parameter:
+                <ul>
+                    <li><code>url</code>: the string that cointains the query and the endpoint to interrogate.</li>
+                    <li><code>canvaId</code>: the id to retrieve the canva inside of which the chart will appear</li>
+                    <li><code>label</code>: the string that will appear in the legend to describe data</li>
+                </ul>
+            </li>
+            <li>We define two empty arrays, to contain data:
+                <ul>
+                    <li><code>labelArray</code>: the array that will contain the labels for the x axis</li>
+                    <li><code>dataArray</code>: the array that will contain the count for the y axis</li>
+                </ul>
+            </li>
+            <li>We separate the body into two main blocks:
+                <ul>
+                    <li><code>try</code> is the core, will contain the actions to carry out if we succed</li>
+                    <li><code>catch</code> will execute something in case any error arises</li>
+                </ul>
+            </li>
+            <li>the first action is to wait for the <code>response</code>. In order to do so, we request data with the
+                <code>fetch()</code> function, that takes as parameters:
+                <ul>
+                    <li><code>url</code>: a string that contains both the endpoint end the query</li>
+                    <li>an object <code>{}</code> that contains some options that can be specified. In our case we want:
+                        <ul>
+                            <li>the <code>method</code> to be a GET request</li>
+                            <li> and <code>Accept</code> results only in <code>sparql-results+json</code> format</li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li>We store the response as JSON format (<code>.json()</code>) in the <code>data</code> variable.</li>
+            <li>Once we have our data, I can access variable values in the same way we did so far: through
+                <code>results</code> and <code>bindings</code>. The <code>results</code> object has the form of an
+                array of objects (remember list of dictionaries).
+            </li>
+            <li>We iterate over the single objects (<code>entry</code>) of this array, get the value for the label
+                (<code>entry.eyeColorLabel.value</code>) and push it inside the <code>labelArray</code>. We do the same
+                for the count (<code>entry.count.value</code> inside the <code>dataArray</code>).</li>
+            <li>Finally, with the data thus processed, we plot the chart using the same function we defined above:
+                <code>createBarChart(canvaId, label, labelArray, dataArray)</code>
+            </li>
+        </ul>
+        <h3>Finally!</h3>
+        <p>All we have to do is call the function, replacing the parameters with the variables we defined:</p>
+        <pre>
+            <code>
+    fillChart(myUrl, 'myChart', 'Eye colors');
+            </code>
+        </pre>
+    </section>
+    <div class='m-5'>
+        <canvas id="myChart"></canvas>
+    </div>
+    <h2>Exercize</h2>
+    <p>Try to replicate the same process to plot a <a href='https://www.chartjs.org/docs/latest/charts/line.html'
+            target='_blank'>line chart</a> that shows...</p>
+
+    <!-- Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+    <!-- ChartJS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const myEndpoint = 'https://query.wikidata.org/sparql';
+        const myQuery = 'SELECT ?eyeColorLabel (COUNT(?human) AS ?count) WHERE {  ?human wdt:P31 wd:Q5.  ?human wdt:P1340 ?eyeColor.  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }} GROUP BY ?eyeColorLabel ORDER BY DESC(?count) LIMIT 10';
+        const encodedQuery = encodeURIComponent(myQuery);
+        const myUrl = myEndpoint + '?query=' + encodedQuery;
+
+        const createBarChart = (canvaId, label, labelArray, dataArray) => {
+            const ctx = document.getElementById(canvaId);
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labelArray,
+                    datasets: [{
+                        label: label,
+                        data: dataArray,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+        const fillChart = async function (url, canvaId, label) {
+            labelArray = [];
+            dataArray = [];
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/sparql-results+json' }
+                });
+                const data = await response.json();
+                const results = data.results.bindings; // array of objs
+                console.log(results)
+                for (entry of results) {
+                    labelArray.push(entry.eyeColorLabel.value);
+                    dataArray.push(entry.count.value);
+                }
+                createBarChart(canvaId, label, labelArray, dataArray)
+                // create chart
+            }
+            catch (err) {
+                console.log('Sorry, ', err);
+            }
+        }
+
+        fillChart(myUrl, 'myChart', 'Eye colors');
+
+    </script>
+</body>
+
+</html>
