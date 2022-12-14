@@ -417,8 +417,6 @@
         <pre>
             <code>
     const fillChart = async function (url, canvaId, label) {
-        labelArray = [];
-        dataArray = [];
         try {
             const response = await fetch(url, {
                 method: 'GET',
@@ -426,6 +424,8 @@
             });
             const data = await response.json();
             const results = data.results.bindings; // array of objs
+            labelArray = [];
+            dataArray = [];
             for (entry of results) {
                 labelArray.push(entry.eyeColorLabel.value);
                 dataArray.push(entry.count.value);
@@ -498,7 +498,20 @@
     </div>
     <h2>Exercize</h2>
     <p>Try to replicate the same process to plot a <a href='https://www.chartjs.org/docs/latest/charts/line.html'
-            target='_blank'>line chart</a> that shows...</p>
+            target='_blank'>line chart</a> that shows the number of painters from Wikidata born in time. A painter is
+        identified by the pattern <code>wdt:P106 wd:Q1028181</code> (occupation painter). Birth date can be
+        extracted through the property <code>wdt:P569</code>.<br />
+        Be aware that:</p>
+    <ul>
+        <li>You need <strong>two variables</strong>, one for the x axis with something like years as labels, and one for
+            the y axis that indicates how many painters are born in that specific year.</li>
+        <li>You may want to work with the <strong>birth date</strong>, based on how Wikidata delivers it.</li>
+        <li>Sometimes results can correspond to <strong>empty values</strong>. This can lead to errors that you need to
+            avoid.</li>
+    </ul>
+    <div class='m-5'>
+        <canvas id="myChart2"></canvas>
+    </div>
 
     <!-- Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"
@@ -537,8 +550,6 @@
 
         // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
         const fillChart = async function (url, canvaId, label) {
-            labelArray = [];
-            dataArray = [];
             try {
                 const response = await fetch(url, {
                     method: 'GET',
@@ -546,6 +557,8 @@
                 });
                 const data = await response.json();
                 const results = data.results.bindings; // array of objs
+                labelArray = [];
+                dataArray = [];
                 console.log(results)
                 for (entry of results) {
                     labelArray.push(entry.eyeColorLabel.value);
